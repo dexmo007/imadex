@@ -1,34 +1,27 @@
 package com.dexmohq.imadex;// Imports the Google Cloud client library
 
 import com.google.api.gax.core.FixedCredentialsProvider;
-import com.google.api.gax.core.GoogleCredentialsProvider;
-import com.google.auth.oauth2.ComputeEngineCredentials;
 import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.vision.v1.*;
 import com.google.cloud.vision.v1.Feature.Type;
 import com.google.protobuf.ByteString;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class QuickstartSample {
+public class GoogleCloudVisionTest {
     public static void main(String... args) throws Exception {
 
         // Instantiates a client
-        final ServiceAccountCredentials credentials = ServiceAccountCredentials.fromStream(QuickstartSample.class.getResourceAsStream("/Imadex-1bbf90f0848d.json"));
+        final ServiceAccountCredentials credentials = ServiceAccountCredentials.fromStream(GoogleCloudVisionTest.class.getResourceAsStream("/Imadex-1bbf90f0848d.json"));
         final ImageAnnotatorSettings settings = ImageAnnotatorSettings.newBuilder().setCredentialsProvider(FixedCredentialsProvider.create(credentials)).build();
         try (ImageAnnotatorClient vision = ImageAnnotatorClient.create(settings)) {
 
             // The path to the image file to annotate
-            String fileName = "/P1220092.JPG";
+            String fileName = "/sample.jpg";
             // Reads the image file into memory
-            final ByteString imgBytes = ByteString.readFrom(QuickstartSample.class.getResourceAsStream(fileName));
+            final ByteString imgBytes = ByteString.readFrom(GoogleCloudVisionTest.class.getResourceAsStream(fileName));
 //            Path path = Paths.get(fileName);
 //            byte[] data = Files.readAllBytes(path);
 //            ByteString imgBytes = ByteString.copyFrom(data);

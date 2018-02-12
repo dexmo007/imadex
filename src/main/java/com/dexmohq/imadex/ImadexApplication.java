@@ -1,6 +1,6 @@
 package com.dexmohq.imadex;
 
-import com.dexmohq.imadex.tag.AzureCognitiveProperties;
+import com.dexmohq.imadex.tag.azure.AzureCognitiveProperties;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.boot.CommandLineRunner;

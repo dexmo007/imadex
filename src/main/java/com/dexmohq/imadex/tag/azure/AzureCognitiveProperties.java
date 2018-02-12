@@ -1,4 +1,4 @@
-package com.dexmohq.imadex.tag;
+package com.dexmohq.imadex.tag.azure;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  * <p>Note: This file is ignored by version control to keep secrets hidden.</p>
  */
 @Component
-@PropertySource("classpath:azure.properties")
+@PropertySource("classpath:tagging.properties")
 @ConfigurationProperties(prefix = "azure.cognitive")
 @Getter
 @Setter
