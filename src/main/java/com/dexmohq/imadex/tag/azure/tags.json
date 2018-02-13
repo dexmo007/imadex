@@ -1,0 +1,22 @@
+{
+  "tags": [
+    {
+      "name": "outdoor",
+      "confidence": 0.93173378705978394
+    },
+    {
+      "name": "building",
+      "confidence": 0.81143385171890259
+    },
+    {
+      "name": "roof",
+      "confidence": 0.0743836909532547
+    }
+  ],
+  "requestId": "cfcf6653-b6bb-4e98-8806-f5fb0c770bf7",
+  "metadata": {
+    "height": 4000,
+    "width": 3000,
+    "format": "Jpeg"
+  }
+}

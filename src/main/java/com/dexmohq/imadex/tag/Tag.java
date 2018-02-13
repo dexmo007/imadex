@@ -4,6 +4,8 @@ public interface Tag {
 
     String getTag();
 
-    float getScore();
+    Float getScore();
+
+    Float getConfidence();
 
 }

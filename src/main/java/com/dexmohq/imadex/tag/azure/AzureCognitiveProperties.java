@@ -21,6 +21,8 @@ import org.springframework.stereotype.Component;
 @Setter
 public class AzureCognitiveProperties implements InitializingBean {
 
+    private String tagBaseUrl;
+
     private String visionSubscriptionKey;
 
     private String faceSubscriptionKey;

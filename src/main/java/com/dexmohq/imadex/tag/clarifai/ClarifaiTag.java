@@ -15,7 +15,12 @@ public class ClarifaiTag implements Tag {
     }
 
     @Override
-    public float getScore() {
+    public Float getScore() {
         return concept.value();
+    }
+
+    @Override
+    public Float getConfidence() {
+        return null;
     }
 }

@@ -15,7 +15,12 @@ public class GoogleCloudVisionTag implements Tag {
     }
 
     @Override
-    public float getScore() {
+    public Float getScore() {
         return entityAnnotation.getScore();
+    }
+
+    @Override
+    public Float getConfidence() {
+        return entityAnnotation.getConfidence();
     }
 }
