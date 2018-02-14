@@ -6,15 +6,19 @@ import clarifai2.dto.input.ClarifaiInput;
 import clarifai2.dto.model.output.ClarifaiOutput;
 import clarifai2.dto.prediction.Concept;
 import com.dexmohq.imadex.tag.Tag;
+import com.dexmohq.imadex.tag.TaggingProcessingException;
 import com.dexmohq.imadex.tag.TaggingService;
+import com.dexmohq.imadex.util.Futures;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class ClarifaiTaggingService implements TaggingService {
@@ -27,23 +31,35 @@ public class ClarifaiTaggingService implements TaggingService {
     }
 
     @Override
-    public List<Tag> extractTags(Resource image) {
+    public Stream<ClarifaiTag> extractTags(Resource image) throws IOException {
         final ClarifaiClient client = new ClarifaiBuilder(clarifaiProperties.getApiKey())
                 .buildSync();
-        try {
+        final List<ClarifaiOutput<Concept>> outputs = client.getDefaultModels().generalModel()
+                .predict()
+                .withInputs(ClarifaiInput.forImage(image.getFile()))
+                .executeSync()
+                .get();
+
+        assert outputs.size() == 1;
+        final ClarifaiOutput<Concept> output = outputs.get(0);
+        return output.data().stream().map(ClarifaiTag::new);
+    }
+
+    @Override
+    public Future<Stream<? extends Tag>> extractTagsAsync(Resource image) throws IOException {
+        final ClarifaiInput input = ClarifaiInput.forImage(image.getFile());
+        final Future<ClarifaiClient> clientFuture = new ClarifaiBuilder(clarifaiProperties.getApiKey())
+                .build();
+        final CompletableFuture<ClarifaiClient> future = Futures.completable(clientFuture);
+        return future.thenApply(client -> {
             final List<ClarifaiOutput<Concept>> outputs = client.getDefaultModels().generalModel()
                     .predict()
-                    .withInputs(ClarifaiInput.forImage(image.getFile()))
-                    .executeSync()
-                    .get();
-
-            assert outputs.size() == 1;
-            final ClarifaiOutput<Concept> output = outputs.get(0);
-
-            return output.data().stream().map(ClarifaiTag::new).collect(Collectors.toList());
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+                    .withInputs(input)
+                    .executeSync().get();
+            if (outputs.size() == 1) {
+                future.obtrudeException(new TaggingProcessingException());
+            }
+            return outputs.get(0).data().stream().map(ClarifaiTag::new);
+        });
     }
 }

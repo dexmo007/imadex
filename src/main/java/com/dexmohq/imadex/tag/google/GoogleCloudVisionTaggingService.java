@@ -2,6 +2,8 @@ package com.dexmohq.imadex.tag.google;
 
 import com.dexmohq.imadex.tag.Tag;
 import com.dexmohq.imadex.tag.TaggingService;
+import com.dexmohq.imadex.util.Futures;
+import com.google.api.core.ApiFuture;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.vision.v1.*;
@@ -18,7 +20,8 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.concurrent.Future;
+import java.util.stream.Stream;
 
 @Service
 public class GoogleCloudVisionTaggingService implements TaggingService {
@@ -28,45 +31,50 @@ public class GoogleCloudVisionTaggingService implements TaggingService {
 
     private ServiceAccountCredentials credentials;//todo put settings here
 
+    private ImageAnnotatorClient vision;
+
     @PostConstruct
-    void init() {
-        try (final InputStream in = credentialsResource.getInputStream()) {
-            credentials = ServiceAccountCredentials.fromStream(in);
-            credentialsResource = null;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    void init() throws IOException {
+        vision = ImageAnnotatorClient.create();
+        final InputStream in = credentialsResource.getInputStream();
+        credentials = ServiceAccountCredentials.fromStream(in);
+        credentialsResource = null;
     }
 
     private static final Log log = LogFactory.getLog(GoogleCloudVisionTaggingService.class);
 
-    @Override
-    public List<Tag> extractTags(Resource image) {
-        final ImageAnnotatorClient vision;
-        try {
-            vision = ImageAnnotatorClient.create();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        final byte[] bytes;
-        try {
-            bytes = Files.readAllBytes(image.getFile().toPath());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    private AnnotateImageRequest createRequest(Resource image) throws IOException {
+        final byte[] bytes = Files.readAllBytes(image.getFile().toPath());
         final ByteString byteString = ByteString.copyFrom(bytes);
         final Image img = Image.newBuilder().setContent(byteString).build();
         final Feature feature = Feature.newBuilder().setType(Feature.Type.LABEL_DETECTION).build();
-        final AnnotateImageRequest request = AnnotateImageRequest.newBuilder()
+        return AnnotateImageRequest.newBuilder()
                 .addFeatures(feature)
                 .setImage(img)
                 .build();
-        final BatchAnnotateImagesResponse response = vision.batchAnnotateImages(Collections.singletonList(request));
-        final List<AnnotateImageResponse> responsesList = response.getResponsesList();
-        return responsesList.stream().filter(res -> !res.hasError())
+    }
+
+    private Stream<GoogleCloudVisionTag> mapResult(BatchAnnotateImagesResponse response) {
+        return response.getResponsesList().stream()
+                .filter(res -> !res.hasError())
                 .flatMap(res -> res.getLabelAnnotationsList().stream())
-                .map(GoogleCloudVisionTag::new)
-                .collect(Collectors.toList());
+                .map(GoogleCloudVisionTag::new);
+    }
+
+    @Override
+    public Stream<GoogleCloudVisionTag> extractTags(Resource image) throws IOException {
+        final AnnotateImageRequest request = createRequest(image);
+        final BatchAnnotateImagesResponse response = vision.batchAnnotateImages(Collections.singletonList(request));
+        return mapResult(response);
+    }
+
+    @Override
+    public Future<Stream<? extends Tag>> extractTagsAsync(Resource image) throws IOException {
+        final AnnotateImageRequest request = createRequest(image);
+        final BatchAnnotateImagesRequest batchRequest = BatchAnnotateImagesRequest.newBuilder().addRequests(request).build();
+        final ApiFuture<BatchAnnotateImagesResponse> future = vision.batchAnnotateImagesCallable()
+                .futureCall(batchRequest);
+        return Futures.completable(future).thenApply(this::mapResult);
     }
 
     public void describeImage(Resource image) throws IOException {

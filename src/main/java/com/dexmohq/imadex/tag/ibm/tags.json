@@ -1,0 +1,32 @@
+{
+  "images_processed": 1,
+  "images": [
+    {
+      "image": "sample.jpg",
+      "classifiers": [
+        {
+          "name": "default",
+          "classifier_id": "default",
+          "classes": [
+            {
+              "class": "Statue of Liberty",
+              "score": 0.984
+            },
+            {
+              "class": "memorial",
+              "score": 0.765
+            },
+            {
+              "class": "blue color",
+              "score": 0.74
+            },
+            {
+              "class": "gray color",
+              "score": 0.641
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -7,23 +7,25 @@ import cognitivej.vision.face.scenario.*;
 import com.dexmohq.imadex.storage.StorageService;
 import com.dexmohq.imadex.tag.Tag;
 import com.dexmohq.imadex.tag.TaggingService;
-import com.dexmohq.imadex.tag.azure.AzureCognitiveProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.entity.ContentType;
-import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.util.List;
+import java.util.concurrent.Future;
+import java.util.stream.Stream;
 
 @Service
 public class AzureCognitiveVisionTaggingService implements TaggingService {
@@ -66,28 +68,34 @@ public class AzureCognitiveVisionTaggingService implements TaggingService {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public List<Tag> extractTags(Resource image) {
-        final HttpClient httpClient = HttpClients.createDefault();
+    private HttpPost createRequest(Resource image) throws IOException {
         final URI baseUri = URI.create(azureCognitiveProperties.getTagBaseUrl());
         final HttpPost request = new HttpPost(baseUri);
-        request.setHeader("Content-Type","application/octet-stream");
+        request.setHeader("Content-Type", "application/octet-stream");
         request.setHeader("Ocp-Apim-Subscription-Key", azureCognitiveProperties.getVisionSubscriptionKey());
-        final byte[] imageBytes;
-        try {
-            imageBytes = Files.readAllBytes(image.getFile().toPath());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        final byte[] imageBytes = Files.readAllBytes(image.getFile().toPath());
         final ByteArrayEntity entity = new ByteArrayEntity(imageBytes, ContentType.APPLICATION_OCTET_STREAM);
         request.setEntity(entity);
-        try {
-            final HttpResponse response = httpClient.execute(request);
-            return (List) mapper.readValue(response.getEntity().getContent(), AzureCognitiveVisionTagResponse.class)
-                    .getTags();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return request;
     }
+
+    private Stream<AzureCognitiveVisionTag> execute(HttpPost request) throws IOException {
+        final HttpClient httpClient = HttpClients.createDefault();
+        final HttpResponse response = httpClient.execute(request);
+        return mapper.readValue(response.getEntity().getContent(), AzureCognitiveVisionTagResponse.class)
+                .getTags().stream();
+    }
+
+    @Override
+    public Stream<AzureCognitiveVisionTag> extractTags(Resource image) throws IOException {
+        final HttpPost request = createRequest(image);
+        return execute(request);
+    }
+
+    @Async
+    @Override
+    public Future<Stream<? extends Tag>> extractTagsAsync(Resource image) throws IOException {
+        return new AsyncResult<>(extractTags(image));
+    }
+
 }
