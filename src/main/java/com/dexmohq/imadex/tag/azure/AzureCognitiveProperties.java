@@ -2,6 +2,7 @@ package com.dexmohq.imadex.tag.azure;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.apachecommons.CommonsLog;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "azure.cognitive")
 @Getter
 @Setter
+@CommonsLog
 public class AzureCognitiveProperties implements InitializingBean {
 
     private String tagBaseUrl;
@@ -28,8 +30,6 @@ public class AzureCognitiveProperties implements InitializingBean {
     private String faceSubscriptionKey;
 
     private String emotionSubscriptionKey;
-
-    private static final Log log = LogFactory.getLog(AzureCognitiveProperties.class);
 
     @Override
     public void afterPropertiesSet() {

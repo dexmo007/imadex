@@ -31,6 +31,11 @@ public class ClarifaiTaggingService implements TaggingService {
     }
 
     @Override
+    public String getSource() {
+        return "clarifai";
+    }
+
+    @Override
     public Stream<ClarifaiTag> extractTags(Resource image) throws IOException {
         final ClarifaiClient client = new ClarifaiBuilder(clarifaiProperties.getApiKey())
                 .buildSync();
@@ -46,7 +51,7 @@ public class ClarifaiTaggingService implements TaggingService {
     }
 
     @Override
-    public Future<Stream<? extends Tag>> extractTagsAsync(Resource image) throws IOException {
+    public CompletableFuture<Stream<? extends Tag>> extractTagsAsync(Resource image) throws IOException {
         final ClarifaiInput input = ClarifaiInput.forImage(image.getFile());
         final Future<ClarifaiClient> clientFuture = new ClarifaiBuilder(clarifaiProperties.getApiKey())
                 .build();

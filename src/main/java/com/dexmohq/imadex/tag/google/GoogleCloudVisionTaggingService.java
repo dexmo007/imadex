@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.stream.Stream;
 
@@ -29,19 +30,22 @@ public class GoogleCloudVisionTaggingService implements TaggingService {
     @Value("classpath:Imadex-1bbf90f0848d.json")
     private Resource credentialsResource;
 
-    private ServiceAccountCredentials credentials;//todo put settings here
-
-    private ImageAnnotatorClient vision;
+    private ImageAnnotatorSettings settings;
 
     @PostConstruct
     void init() throws IOException {
-        vision = ImageAnnotatorClient.create();
         final InputStream in = credentialsResource.getInputStream();
-        credentials = ServiceAccountCredentials.fromStream(in);
+        final ServiceAccountCredentials credentials = ServiceAccountCredentials.fromStream(in);
+        settings = ImageAnnotatorSettings.newBuilder()
+                .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
+                .build();
         credentialsResource = null;
     }
 
-    private static final Log log = LogFactory.getLog(GoogleCloudVisionTaggingService.class);
+    @Override
+    public String getSource() {
+        return "google";
+    }
 
     private AnnotateImageRequest createRequest(Resource image) throws IOException {
         final byte[] bytes = Files.readAllBytes(image.getFile().toPath());
@@ -64,53 +68,56 @@ public class GoogleCloudVisionTaggingService implements TaggingService {
     @Override
     public Stream<GoogleCloudVisionTag> extractTags(Resource image) throws IOException {
         final AnnotateImageRequest request = createRequest(image);
+        final ImageAnnotatorClient vision = ImageAnnotatorClient.create(settings);
         final BatchAnnotateImagesResponse response = vision.batchAnnotateImages(Collections.singletonList(request));
         return mapResult(response);
     }
 
     @Override
-    public Future<Stream<? extends Tag>> extractTagsAsync(Resource image) throws IOException {
+    public CompletableFuture<Stream<? extends Tag>> extractTagsAsync(Resource image) throws IOException {
         final AnnotateImageRequest request = createRequest(image);
-        final BatchAnnotateImagesRequest batchRequest = BatchAnnotateImagesRequest.newBuilder().addRequests(request).build();
+        final BatchAnnotateImagesRequest batchRequest = BatchAnnotateImagesRequest.newBuilder()
+                .addRequests(request).build();
+        final ImageAnnotatorClient vision = ImageAnnotatorClient.create(settings);
         final ApiFuture<BatchAnnotateImagesResponse> future = vision.batchAnnotateImagesCallable()
                 .futureCall(batchRequest);
         return Futures.completable(future).thenApply(this::mapResult);
     }
 
-    public void describeImage(Resource image) throws IOException {
-        final ImageAnnotatorSettings settings = ImageAnnotatorSettings.newBuilder()
-                .setCredentialsProvider(FixedCredentialsProvider.create(credentials)).build();
-        final ImageAnnotatorClient vision = ImageAnnotatorClient.create(settings);
-        final byte[] bytes = Files.readAllBytes(image.getFile().toPath());
-        final ByteString byteString = ByteString.copyFrom(bytes);
-        final Image img = Image.newBuilder().setContent(byteString).build();
-        final Feature feature = Feature.newBuilder().setType(Feature.Type.LABEL_DETECTION).build();
-        final AnnotateImageRequest request = AnnotateImageRequest.newBuilder()
-                .addFeatures(feature)
-                .setImage(img)
-                .build();
-        final BatchAnnotateImagesResponse response = vision.batchAnnotateImages(Collections.singletonList(request));
-        final List<AnnotateImageResponse> responsesList = response.getResponsesList();
-        for (AnnotateImageResponse imageResponse : responsesList) {
-            if (imageResponse.hasError()) {
-                // todo what to do here
-                log.error("Error during Google Vision Image Analysis: " + imageResponse.getError().getMessage());
-                continue;
-            }
-            for (EntityAnnotation annotation : imageResponse.getLabelAnnotationsList()) {
-
-                final String tag = annotation.getDescription();
-                final float score = annotation.getScore();
-                final float topicality = annotation.getTopicality();
-                final String mid = annotation.getMid();
-                final String locale = annotation.getLocale();
-                final List<LocationInfo> locationsList = annotation.getLocationsList();
-                final float confidence = annotation.getConfidence();
-                final List<Property> properties = annotation.getPropertiesList();
-//                annotation.get
-//                annotation.getPropertiesList().forEach(property -> property.);
-//                annotation.getAllFields().forEach(((fieldDescriptor, o) -> ));
-            }
-        }
-    }
+//    public void describeImage(Resource image) throws IOException {
+//        final ImageAnnotatorSettings settings = ImageAnnotatorSettings.newBuilder()
+//                .setCredentialsProvider(FixedCredentialsProvider.create(credentials)).build();
+//        final ImageAnnotatorClient vision = ImageAnnotatorClient.create(settings);
+//        final byte[] bytes = Files.readAllBytes(image.getFile().toPath());
+//        final ByteString byteString = ByteString.copyFrom(bytes);
+//        final Image img = Image.newBuilder().setContent(byteString).build();
+//        final Feature feature = Feature.newBuilder().setType(Feature.Type.LABEL_DETECTION).build();
+//        final AnnotateImageRequest request = AnnotateImageRequest.newBuilder()
+//                .addFeatures(feature)
+//                .setImage(img)
+//                .build();
+//        final BatchAnnotateImagesResponse response = vision.batchAnnotateImages(Collections.singletonList(request));
+//        final List<AnnotateImageResponse> responsesList = response.getResponsesList();
+//        for (AnnotateImageResponse imageResponse : responsesList) {
+//            if (imageResponse.hasError()) {
+//                // todo what to do here
+//                log.error("Error during Google Vision Image Analysis: " + imageResponse.getError().getMessage());
+//                continue;
+//            }
+//            for (EntityAnnotation annotation : imageResponse.getLabelAnnotationsList()) {
+//
+//                final String tag = annotation.getDescription();
+//                final float score = annotation.getScore();
+//                final float topicality = annotation.getTopicality();
+//                final String mid = annotation.getMid();
+//                final String locale = annotation.getLocale();
+//                final List<LocationInfo> locationsList = annotation.getLocationsList();
+//                final float confidence = annotation.getConfidence();
+//                final List<Property> properties = annotation.getPropertiesList();
+////                annotation.get
+////                annotation.getPropertiesList().forEach(property -> property.);
+////                annotation.getAllFields().forEach(((fieldDescriptor, o) -> ));
+//            }
+//        }
+//    }
 }

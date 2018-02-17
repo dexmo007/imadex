@@ -4,17 +4,17 @@ import com.dexmohq.imadex.tag.Tag;
 import com.dexmohq.imadex.tag.TaggingProcessingException;
 import com.dexmohq.imadex.tag.TaggingService;
 import com.ibm.watson.developer_cloud.http.ServiceCall;
+import com.ibm.watson.developer_cloud.http.ServiceCallback;
 import com.ibm.watson.developer_cloud.visual_recognition.v3.VisualRecognition;
 import com.ibm.watson.developer_cloud.visual_recognition.v3.model.ClassifiedImage;
 import com.ibm.watson.developer_cloud.visual_recognition.v3.model.ClassifiedImages;
 import com.ibm.watson.developer_cloud.visual_recognition.v3.model.ClassifyOptions;
-import jersey.repackaged.jsr166e.CompletableFuture;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 @Service
@@ -25,6 +25,11 @@ public class IbmWatsonVisualRecognitionTaggingService implements TaggingService 
     @Autowired
     public IbmWatsonVisualRecognitionTaggingService(IbmWatsonVisualRecognitionProperties properties) {
         this.properties = properties;
+    }
+
+    @Override
+    public String getSource() {
+        return "ibm";
     }
 
     private ServiceCall<ClassifiedImages> createServiceCall(Resource image) throws IOException {
@@ -57,16 +62,24 @@ public class IbmWatsonVisualRecognitionTaggingService implements TaggingService 
     }
 
     @Override
-    public Future<Stream<? extends Tag>> extractTagsAsync(Resource image) throws IOException {
-        final CompletableFuture<ClassifiedImages> future = createServiceCall(image).rx();
-        return future.thenApply(result -> {
-            try {
-                return mapResult(result);
-            } catch (TaggingProcessingException e) {
-                future.obtrudeException(e);
-                return null;
+    public java.util.concurrent.CompletableFuture<Stream<? extends Tag>> extractTagsAsync(Resource image) throws IOException {
+        final CompletableFuture<Stream<? extends Tag>> future = new CompletableFuture<>();
+        createServiceCall(image).enqueue(new ServiceCallback<ClassifiedImages>() {
+            @Override
+            public void onResponse(ClassifiedImages classifiedImages) {
+                try {
+                    future.complete(mapResult(classifiedImages));
+                } catch (TaggingProcessingException e) {
+                    future.completeExceptionally(e);
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                future.completeExceptionally(e);
             }
         });
+        return future;
     }
 
 }

@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.stream.Stream;
 
@@ -39,28 +40,33 @@ public class AzureCognitiveVisionTaggingService implements TaggingService {
         this.azureCognitiveProperties = azureCognitiveProperties;
     }
 
-    public ImageDescription describeImage(String id) throws IOException {
-        final Resource file = storageService.load(id);
-        final ComputerVisionScenario scenario = new ComputerVisionScenario(azureCognitiveProperties.getVisionSubscriptionKey());
-        return scenario.describeImage(file.getInputStream());
+    @Override
+    public String getSource() {
+        return "azure";
     }
 
-    public OCRResult ocrImage(String id) throws IOException {
-        final Resource file = storageService.load(id);
-        final ComputerVisionScenario scenario = new ComputerVisionScenario(azureCognitiveProperties.getVisionSubscriptionKey());
-        return scenario.ocrImage(file.getURL().toExternalForm());
-    }
-
-    public List<IdentificationSet> persons(String id) throws IOException {
-        final FaceScenarios faceScenarios = new FaceScenarios(azureCognitiveProperties.getFaceSubscriptionKey(),
-                azureCognitiveProperties.getEmotionSubscriptionKey());
-        final People people = ScenarioHelper.createPeopleFromHoldingImages(candidates(), ImageNamingStrategy.DEFAULT);
-        final String group = faceScenarios.createGroupWithPeople("uihasd", people);
-        // todo need to wait for response
-        final List<IdentificationSet> idSets = faceScenarios.identifyPersonsInGroup(group, storageService.load(id).getURL().toExternalForm());
-        faceScenarios.deleteGroup(group);
-        return idSets;
-    }
+    //    public ImageDescription describeImage(String id) throws IOException {
+//        final Resource file = storageService.load(id);
+//        final ComputerVisionScenario scenario = new ComputerVisionScenario(azureCognitiveProperties.getVisionSubscriptionKey());
+//        return scenario.describeImage(file.getInputStream());
+//    }
+//
+//    public OCRResult ocrImage(String id) throws IOException {
+//        final Resource file = storageService.load(id);
+//        final ComputerVisionScenario scenario = new ComputerVisionScenario(azureCognitiveProperties.getVisionSubscriptionKey());
+//        return scenario.ocrImage(file.getURL().toExternalForm());
+//    }
+//
+//    public List<IdentificationSet> persons(String id) throws IOException {
+//        final FaceScenarios faceScenarios = new FaceScenarios(azureCognitiveProperties.getFaceSubscriptionKey(),
+//                azureCognitiveProperties.getEmotionSubscriptionKey());
+//        final People people = ScenarioHelper.createPeopleFromHoldingImages(candidates(), ImageNamingStrategy.DEFAULT);
+//        final String group = faceScenarios.createGroupWithPeople("uihasd", people);
+//        // todo need to wait for response
+//        final List<IdentificationSet> idSets = faceScenarios.identifyPersonsInGroup(group, storageService.load(id).getURL().toExternalForm());
+//        faceScenarios.deleteGroup(group);
+//        return idSets;
+//    }
 
     private List<ImageHolder> candidates() {
         return null;
@@ -94,8 +100,8 @@ public class AzureCognitiveVisionTaggingService implements TaggingService {
 
     @Async
     @Override
-    public Future<Stream<? extends Tag>> extractTagsAsync(Resource image) throws IOException {
-        return new AsyncResult<>(extractTags(image));
+    public CompletableFuture<Stream<? extends Tag>> extractTagsAsync(Resource image) throws IOException {
+        return CompletableFuture.completedFuture(extractTags(image));
     }
 
 }
