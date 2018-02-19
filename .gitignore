@@ -26,3 +26,4 @@ nbdist/
 ### Secrets ###
 /src/main/resources/Imadex-1bbf90f0848d.json
 /src/main/resources/tagging.properties
+/src/main/resources/security/aes-keystore.jck

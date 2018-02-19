@@ -30,11 +30,11 @@ public class MongoClientDetails implements ClientDetails {
     private String clientSecret;
     private Set<String> scope;
     @JsonIgnore
-    private Set<String> authorizedGrantTypes;
+    private Set<String> authorizedGrantTypes = Collections.emptySet();
     @JsonIgnore
     private Set<String> registeredRedirectUri;
     @JsonProperty
-    private Set<String> authorities;
+    private Set<Authority> authorities = Collections.emptySet();
     @JsonIgnore
     private Integer accessTokenValiditySeconds;
     @JsonIgnore
@@ -57,8 +57,8 @@ public class MongoClientDetails implements ClientDetails {
 
     @JsonIgnore
     @Override
-    public Collection<GrantedAuthority> getAuthorities() {
-        return authorities.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toSet());
+    public Set<GrantedAuthority> getAuthorities() {
+        return (Set) authorities;
     }
 
     @JsonIgnore
@@ -67,25 +67,6 @@ public class MongoClientDetails implements ClientDetails {
         return autoApproveScopes != null &&
                 autoApproveScopes.stream()
                         .anyMatch(auto -> auto.equals("true") || scope.matches(auto));
-    }
-
-    public static void main(String[] args) throws IOException {
-        final ObjectMapper mapper = new ObjectMapper();
-        final MongoClientDetails clientDetails = new MongoClientDetails();
-
-        clientDetails.clientId = "ci87218371";
-        clientDetails.accessTokenValiditySeconds=6000;
-        clientDetails.refreshTokenValiditySeconds=6000;
-        clientDetails.authorities = new HashSet<>(Arrays.asList("user", "admin"));
-        clientDetails.scope = new HashSet<>(Arrays.asList("read", "write"));
-        clientDetails.additionalInformation = new HashMap<>();
-        clientDetails.additionalInformation.put("mail", "test@mail.de");
-        clientDetails.additionalInformation.put("age", 46);
-
-        final String json = mapper.writeValueAsString(clientDetails);
-        System.out.println(json);
-        final MongoClientDetails read = mapper.readValue(json, MongoClientDetails.class);
-        System.out.println(read);
     }
 
 }

@@ -11,6 +11,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
@@ -18,12 +19,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
+import java.security.Principal;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/storage")
+@PreAuthorize("hasAuthority('USER')")
 public class StorageController {
 
     public static final String USER_ID = "81e4b4f8-6682-449d-b357-4330eec55dff";
@@ -37,7 +40,9 @@ public class StorageController {
     }
 
     @GetMapping("/list")
-    public List<StorageItem> listFiles(@RequestParam("page") int page, @RequestParam(value = "pageSize", defaultValue = "20") int pageSize) throws IOException {
+    public List<StorageItem> listFiles(@RequestParam("page") int page,
+                                       @RequestParam(value = "pageSize", defaultValue = "20") int pageSize,
+                                       Principal principal) throws IOException {
         return storageService.listFiles(USER_ID, page, pageSize).collect(Collectors.toList());
     }
 

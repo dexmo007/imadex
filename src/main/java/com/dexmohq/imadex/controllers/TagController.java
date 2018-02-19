@@ -10,9 +10,12 @@ import com.dexmohq.imadex.tag.TaggingSourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.security.Principal;
 import java.util.*;
 import java.util.concurrent.Future;
 import java.util.function.BiConsumer;
@@ -22,6 +25,7 @@ import static com.dexmohq.imadex.controllers.StorageController.USER_ID;
 
 @RestController
 @RequestMapping("/tag")
+@PreAuthorize("hasAuthority('USER')")
 public class TagController {
 
     private final TagRepository tagRepository;
@@ -37,7 +41,9 @@ public class TagController {
     }
 
     @GetMapping("/list")
-    public List<TaggedStorageItem> list(@RequestParam("page") int page, @RequestParam(value = "pageSize", defaultValue = "20") int pageSize) throws IOException {
+    public List<TaggedStorageItem> list(@RequestParam("page") int page,
+                                        @RequestParam(value = "pageSize", defaultValue = "20") int pageSize,
+                                        OAuth2Authentication authentication) throws IOException {//todo extract user id
         return storageService.listFiles(USER_ID, page, pageSize).map(item -> {
             final TaggedImage taggedImage = tagRepository.findOne(USER_ID + item.getFilename());
             final Set<TagDocument> tags = taggedImage == null ? null : taggedImage.getTags();
