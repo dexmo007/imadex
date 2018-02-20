@@ -27,16 +27,18 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     private final SecurityProperties securityProperties;
     private final ImadexSecurityProperties imadexSecurityProperties;
     private final PasswordEncoder passwordEncoder;
+    private final ClaimsAwareAccessTokenConverter claimsAwareAccessTokenConverter;
 
     @Autowired
     public SecurityConfig(UserService userService,
                           @Qualifier("securityProperties") SecurityProperties securityProperties,
                           ImadexSecurityProperties imadexSecurityProperties,
-                          PasswordEncoder passwordEncoder) {
+                          PasswordEncoder passwordEncoder, ClaimsAwareAccessTokenConverter claimsAwareAccessTokenConverter) {
         this.userService = userService;
         this.securityProperties = securityProperties;
         this.imadexSecurityProperties = imadexSecurityProperties;
         this.passwordEncoder = passwordEncoder;
+        this.claimsAwareAccessTokenConverter = claimsAwareAccessTokenConverter;
     }
 
     @Override
@@ -57,6 +59,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     public JwtAccessTokenConverter accessTokenConverter() {
         JwtAccessTokenConverter converter = new JwtAccessTokenConverter();
         converter.setSigningKey(imadexSecurityProperties.getJwt().getSigningKey());
+        converter.setAccessTokenConverter(claimsAwareAccessTokenConverter);
         return converter;
     }
 

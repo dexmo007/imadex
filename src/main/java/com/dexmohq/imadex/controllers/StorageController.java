@@ -5,31 +5,28 @@ import com.dexmohq.imadex.image.ImageFormatValidator;
 import com.dexmohq.imadex.image.UnsupportedFormatException;
 import com.dexmohq.imadex.storage.StorageItem;
 import com.dexmohq.imadex.storage.StorageService;
-import org.apache.tomcat.util.http.fileupload.FileUploadBase;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
-import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
-import java.security.Principal;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static com.dexmohq.imadex.auth.IdTokenEnhancer.getUserId;
 
 @RestController
 @RequestMapping("/storage")
 @PreAuthorize("hasAuthority('USER')")
 public class StorageController {
 
-    public static final String USER_ID = "81e4b4f8-6682-449d-b357-4330eec55dff";
     private final StorageService storageService;
     private final ImageFormatValidator imageFormatValidator;
 
@@ -42,16 +39,19 @@ public class StorageController {
     @GetMapping("/list")
     public List<StorageItem> listFiles(@RequestParam("page") int page,
                                        @RequestParam(value = "pageSize", defaultValue = "20") int pageSize,
-                                       Principal principal) throws IOException {
-        return storageService.listFiles(USER_ID, page, pageSize).collect(Collectors.toList());
+                                       OAuth2Authentication authentication) throws IOException {
+        final String userId = getUserId(authentication);
+        return storageService.listFiles(userId, page, pageSize).collect(Collectors.toList());
     }
 
     @PostMapping("/upload")
     public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file,
-                                             @RequestParam(name = "override", required = false) boolean override) throws FileCorruptedException, UnsupportedFormatException {
+                                             @RequestParam(name = "override", required = false) boolean override,
+                                             OAuth2Authentication authentication) throws FileCorruptedException, UnsupportedFormatException {
+        final String userId = getUserId(authentication);
         try {
             imageFormatValidator.validateFormat(file);
-            storageService.store("81e4b4f8-6682-449d-b357-4330eec55dff", file, override);
+            storageService.store(userId, file, override);
             return ResponseEntity.ok("Successfully uploaded");
         } catch (FileAlreadyExistsException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body("File already exists. Override?");
@@ -62,9 +62,11 @@ public class StorageController {
     }
 
     @GetMapping
-    public ResponseEntity<Resource> get(@RequestParam("id") String id) {
+    public ResponseEntity<Resource> get(@RequestParam("id") String id,
+                                        OAuth2Authentication authentication) {
+        final String userId = getUserId(authentication);
         try {
-            final Resource file = storageService.load("81e4b4f8-6682-449d-b357-4330eec55dff", id);
+            final Resource file = storageService.load(userId, id);
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION,
                             "attachment; filename=\"" + file.getFilename() + "\"")
@@ -75,9 +77,11 @@ public class StorageController {
     }
 
     @DeleteMapping
-    public ResponseEntity<String> delete(@RequestParam("id") String id) {
+    public ResponseEntity<String> delete(@RequestParam("id") String id,
+                                         OAuth2Authentication authentication) {
+        final String userId = getUserId(authentication);
         try {
-            storageService.delete("81e4b4f8-6682-449d-b357-4330eec55dff", id);
+            storageService.delete(userId, id);
             return ResponseEntity.ok("Successfully deleted");
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED)

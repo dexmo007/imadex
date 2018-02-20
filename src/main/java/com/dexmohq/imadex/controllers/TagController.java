@@ -15,13 +15,13 @@ import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.security.Principal;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Future;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
-import static com.dexmohq.imadex.controllers.StorageController.USER_ID;
+import static com.dexmohq.imadex.auth.IdTokenEnhancer.getUserId;
 
 @RestController
 @RequestMapping("/tag")
@@ -44,21 +44,25 @@ public class TagController {
     public List<TaggedStorageItem> list(@RequestParam("page") int page,
                                         @RequestParam(value = "pageSize", defaultValue = "20") int pageSize,
                                         OAuth2Authentication authentication) throws IOException {//todo extract user id
-        return storageService.listFiles(USER_ID, page, pageSize).map(item -> {
-            final TaggedImage taggedImage = tagRepository.findOne(USER_ID + item.getFilename());
+        final String userId = getUserId(authentication);
+        return storageService.listFiles(userId, page, pageSize).map(item -> {
+            final TaggedImage taggedImage = tagRepository.findOne(userId + item.getFilename());
             final Set<TagDocument> tags = taggedImage == null ? null : taggedImage.getTags();
             return new TaggedStorageItem(item, tags);
         }).collect(Collectors.toList());
     }
 
     @PostMapping("/add")
-    public ResponseEntity<?> addTag(@RequestParam("image") String image, @RequestParam("tag") String tag) {
-        if (!storageService.exists(USER_ID, image)) {
+    public ResponseEntity<?> addTag(@RequestParam("image") String image,
+                                    @RequestParam("tag") String tag,
+                                    OAuth2Authentication authentication) {
+        final String userId = getUserId(authentication);
+        if (!storageService.exists(userId, image)) {
             return ResponseEntity.notFound().build();
         }
-        TaggedImage taggedImage = tagRepository.findOne(USER_ID + image);
+        TaggedImage taggedImage = tagRepository.findOne(userId + image);
         if (taggedImage == null) {
-            taggedImage = new TaggedImage(UUID.fromString(USER_ID), image);
+            taggedImage = new TaggedImage(userId, image);
         }
         final TagDocument tagDocument = new TagDocument();
         tagDocument.setSource("custom");
@@ -74,8 +78,12 @@ public class TagController {
     }
 
     @PostMapping("/compute")
-    public Future<TaggedStorageItem> compute(@RequestParam("source") String source, @RequestParam("image") String image) throws TaggingSourceNotFoundException, IOException {
-        final Resource resource = storageService.load(USER_ID, image);
+    public Future<TaggedStorageItem> compute(@RequestParam("source") String source,
+                                             @RequestParam("image") String image,
+                                             OAuth2Authentication authentication)
+            throws TaggingSourceNotFoundException, IOException {
+        final String userId = getUserId(authentication);
+        final Resource resource = storageService.load(userId, image);
         final long fileSize = resource.contentLength();
         return taggingServiceProvider.getTaggingService(source)
                 .extractTagsAsync(resource)
@@ -83,9 +91,9 @@ public class TagController {
                         new StorageItem(image, fileSize),
                         stream.map(tag -> TagDocument.create(tag, source)).collect(Collectors.toSet())))
                 .whenComplete((taggedStorageItem, throwable) -> {
-                    TaggedImage taggedImage = tagRepository.findOne(USER_ID + image);
+                    TaggedImage taggedImage = tagRepository.findOne(userId + image);
                     if (taggedImage == null) {
-                        taggedImage = new TaggedImage(UUID.fromString(USER_ID), image);
+                        taggedImage = new TaggedImage(userId, image);
                     }
                     Set<TagDocument> tags = taggedImage.getTags();
                     if (tags == null) {

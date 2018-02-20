@@ -23,12 +23,12 @@ public class TaggedImage {
 
     private Set<TagDocument> tags;
 
-    public TaggedImage(UUID userId, String filename) {
-        id = userId.toString() + filename;
+    public TaggedImage(String userId, String filename) {//todo check if object id is always the same length, otherwise user id and array of tags as property
+        id = userId + filename;
     }
 
-    public UUID getUserId() {
-        return UUID.fromString(id.substring(0, 36));
+    public String getUserId() {
+        return id.substring(0, 36);
     }
 
     public String getFilename() {
