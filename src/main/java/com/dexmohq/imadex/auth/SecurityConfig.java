@@ -25,20 +25,15 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     private final UserService userService;
     private final SecurityProperties securityProperties;
-    private final ImadexSecurityProperties imadexSecurityProperties;
     private final PasswordEncoder passwordEncoder;
-    private final ClaimsAwareAccessTokenConverter claimsAwareAccessTokenConverter;
 
     @Autowired
     public SecurityConfig(UserService userService,
                           @Qualifier("securityProperties") SecurityProperties securityProperties,
-                          ImadexSecurityProperties imadexSecurityProperties,
-                          PasswordEncoder passwordEncoder, ClaimsAwareAccessTokenConverter claimsAwareAccessTokenConverter) {
+                          PasswordEncoder passwordEncoder) {
         this.userService = userService;
         this.securityProperties = securityProperties;
-        this.imadexSecurityProperties = imadexSecurityProperties;
         this.passwordEncoder = passwordEncoder;
-        this.claimsAwareAccessTokenConverter = claimsAwareAccessTokenConverter;
     }
 
     @Override
@@ -55,25 +50,4 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         auth.userDetailsService(userService).passwordEncoder(passwordEncoder);
     }
 
-    @Bean
-    public JwtAccessTokenConverter accessTokenConverter() {
-        JwtAccessTokenConverter converter = new JwtAccessTokenConverter();
-        converter.setSigningKey(imadexSecurityProperties.getJwt().getSigningKey());
-        converter.setAccessTokenConverter(claimsAwareAccessTokenConverter);
-        return converter;
-    }
-
-    @Bean
-    public TokenStore tokenStore() {
-        return new JwtTokenStore(accessTokenConverter());
-    }
-
-    @Bean
-    @Primary
-    public DefaultTokenServices tokenServices() {
-        DefaultTokenServices tokenServices = new DefaultTokenServices();
-        tokenServices.setTokenStore(tokenStore());
-        tokenServices.setSupportRefreshToken(true);
-        return tokenServices;
-    }
 }

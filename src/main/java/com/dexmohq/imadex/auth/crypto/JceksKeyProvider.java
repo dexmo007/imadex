@@ -13,7 +13,7 @@ public class JceksKeyProvider implements KeyProvider {
     private static final String DEFAULT_STORE_PASSWORD_KEY = "password.encoding.storepass";
     private static final String DEFAULT_KEY_PASSWORD_KEY = "password.encoding.keypass";
     private String alias = "jceksaes";
-    private String keyStoreLocation = "/security/aes-keystore.jck";
+    private String keyStoreLocation = "/security/aes-keystore.jceks";
     private String storePassword = null;
     private String keyPassword = null;
 

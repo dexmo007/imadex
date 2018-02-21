@@ -27,3 +27,7 @@ nbdist/
 /src/main/resources/Imadex-1bbf90f0848d.json
 /src/main/resources/tagging.properties
 /src/main/resources/security/aes-keystore.jck
+/src/main/resources/security/jwt-keystore.jks
+/src/main/resources/security/keystore.jck
+/src/main/resources/security/public.txt
+/src/main/resources/security/aes-keystore.jceks

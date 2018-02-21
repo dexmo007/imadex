@@ -33,7 +33,9 @@ public class ImadexSecurityProperties implements InitializingBean {
     @Getter
     @Setter
     public static class Jwt {
-        private String signingKey;
+        private String keystoreAlias;
+        private String storePassword;
+        private String keyPassword;
     }
 
     @Getter
