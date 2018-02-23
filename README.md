@@ -38,3 +38,7 @@ ibm.watson.visual-recognition.api-key=<your key>
 Add service credentials for Google Cloud Vision as:
 resources/Imadex-1bbf90f0848d.json
 //TODO file name in tagging.properties
+
+Download training data:
+https://sourceforge.net/projects/deepboof/files/networks/v1/likevgg_cifar10.zip/download
+https://sourceforge.net/projects/boofcv/files/datasets/nin_imagenet.zip/download

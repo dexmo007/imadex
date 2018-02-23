@@ -1,6 +1,7 @@
 package com.dexmohq.imadex.controllers;
 
 import com.dexmohq.imadex.data.TagDocument;
+import com.dexmohq.imadex.data.TagQuality;
 import com.dexmohq.imadex.data.TagRepository;
 import com.dexmohq.imadex.data.TaggedImage;
 import com.dexmohq.imadex.storage.StorageItem;
@@ -9,15 +10,15 @@ import com.dexmohq.imadex.tag.TaggingServiceProvider;
 import com.dexmohq.imadex.tag.TaggingSourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
@@ -28,6 +29,7 @@ import static com.dexmohq.imadex.auth.IdTokenEnhancer.getUserId;
 @PreAuthorize("hasAuthority('USER')")
 public class TagController {
 
+    public static final String CUSTOM_TAG_SOURCE = "custom";
     private final TagRepository tagRepository;
     private final StorageService storageService;
     private final TaggingServiceProvider taggingServiceProvider;
@@ -63,26 +65,42 @@ public class TagController {
         TaggedImage taggedImage = tagRepository.findOne(userId + image);
         if (taggedImage == null) {
             taggedImage = new TaggedImage(userId, image);
+            taggedImage.setTags(Collections.singleton(TagDocument.create(tag, CUSTOM_TAG_SOURCE)));
+        } else {
+            final Set<TagDocument> tags = taggedImage.getTags();
+            if (tags == null || tags.isEmpty()) {
+                taggedImage.setTags(Collections.singleton(TagDocument.create(tag, CUSTOM_TAG_SOURCE)));
+            } else {
+                final Optional<TagDocument> optionalDocument = tags.stream()
+                        .filter(t -> t.getTag().equals(tag.toLowerCase()))
+                        .findAny();
+                if (optionalDocument.isPresent()) {
+                    final TagDocument document = optionalDocument.get();
+                    final Map<String, TagQuality> qualities = document.getQualities();
+                    if (qualities != null) {
+                        qualities.putIfAbsent(CUSTOM_TAG_SOURCE, new TagQuality());
+                    } else {
+                        document.setQualities(Collections.singletonMap(CUSTOM_TAG_SOURCE, new TagQuality()));
+                    }
+                } else {
+                    tags.add(TagDocument.create(tag, CUSTOM_TAG_SOURCE));
+                }
+            }
         }
-        final TagDocument tagDocument = new TagDocument();
-        tagDocument.setSource("custom");
-        tagDocument.setTag(tag);
-        Set<TagDocument> tags = taggedImage.getTags();
-        if (tags == null) {
-            tags = new HashSet<>();
-            taggedImage.setTags(tags);
-        }
-        tags.add(tagDocument);
         tagRepository.save(taggedImage);
         return ResponseEntity.ok("Successful");
     }
 
     @PostMapping("/compute")
-    public Future<TaggedStorageItem> compute(@RequestParam("source") String source,
+    public Future<ResponseEntity<?>> compute(@RequestParam("source") String source,
                                              @RequestParam("image") String image,
                                              OAuth2Authentication authentication)
-            throws TaggingSourceNotFoundException, IOException {
+            throws TaggingSourceNotFoundException, IOException {//todo check if computed already
         final String userId = getUserId(authentication);
+        final TaggedImage existing = tagRepository.findOne(userId + image);
+        if (existing != null && existing.getAlreadyTaggedBy() != null && existing.getAlreadyTaggedBy().contains(source)) {
+            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.CONFLICT).body("Already computed"));
+        }
         final Resource resource = storageService.load(userId, image);
         final long fileSize = resource.contentLength();
         return taggingServiceProvider.getTaggingService(source)
@@ -91,7 +109,7 @@ public class TagController {
                         new StorageItem(image, fileSize),
                         stream.map(tag -> TagDocument.create(tag, source)).collect(Collectors.toSet())))
                 .whenComplete((taggedStorageItem, throwable) -> {
-                    TaggedImage taggedImage = tagRepository.findOne(userId + image);
+                    TaggedImage taggedImage = existing;
                     if (taggedImage == null) {
                         taggedImage = new TaggedImage(userId, image);
                     }
@@ -100,9 +118,25 @@ public class TagController {
                         tags = new HashSet<>();
                         taggedImage.setTags(tags);
                     }
+                    for (TagDocument tagDocument : taggedStorageItem.getTags()) {
+                        final Optional<TagDocument> optionalDocument = tags.stream().filter(td -> td.getTag().equalsIgnoreCase(tagDocument.getTag())).findAny();
+                        if (optionalDocument.isPresent()) {
+                            final TagDocument document = optionalDocument.get();
+                            final Map<String, TagQuality> qualities = document.getQualities();
+                            if (qualities == null) {
+                                document.setQualities(tagDocument.getQualities());
+                            } else {
+                                qualities.putAll(tagDocument.getQualities());
+                            }
+                        } else {
+                            tags.add(tagDocument);
+                        }
+                    }
                     tags.addAll(taggedStorageItem.getTags());
+                    taggedImage.getAlreadyTaggedBy().add(source);
                     tagRepository.save(taggedImage);
-                });
+                })
+                .thenApply(ResponseEntity::ok);
     }
 
 }

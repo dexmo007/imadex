@@ -6,11 +6,12 @@ import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-@Document
+@Document(collection = "tagged_image")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,6 +21,8 @@ public class TaggedImage {
     private String id;
 
     //todo more metadata
+
+    private Set<String> alreadyTaggedBy = Collections.emptySet();
 
     private Set<TagDocument> tags;
 

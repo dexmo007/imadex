@@ -1,43 +1,55 @@
 package com.dexmohq.imadex.data;
 
 import com.dexmohq.imadex.tag.Tag;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Getter
 @Setter
-public class TagDocument implements Tag {
+public class TagDocument {
 
     private String tag;
-    private Float score;
-    private Float confidence;
-    private String source;
+    private Map<String, TagQuality> qualities;
 
     public static TagDocument create(@NonNull Tag tag, @NonNull String source) {
         final TagDocument tagDocument = new TagDocument();
         tagDocument.setTag(tag.getTag());
-        tagDocument.setScore(tag.getScore());
-        tagDocument.setConfidence(tag.getConfidence());
-        tagDocument.setSource(source);
+        final Map<String, TagQuality> qualities = new HashMap<>();
+        qualities.put(source, TagQuality.of(tag.getScore(),tag.getConfidence()));
+        tagDocument.setQualities(qualities);
         return tagDocument;
+    }
+
+    public static TagDocument create(@NonNull String tag, @NonNull String source) {
+        final TagDocument tagDocument = new TagDocument();
+        tagDocument.setTag(tag);
+        final Map<String, TagQuality> qualities = new HashMap<>();
+        qualities.put(source, new TagQuality());
+        tagDocument.setQualities(qualities);
+        return tagDocument;
+    }
+
+    public void setTag(@NonNull String tag) {
+        this.tag = tag.trim().toLowerCase();
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (!(o instanceof TagDocument)) return false;
 
         TagDocument that = (TagDocument) o;
 
-        if (tag != null ? !tag.equals(that.tag) : that.tag != null) return false;
-        return source != null ? source.equals(that.source) : that.source == null;
+        return tag.equals(that.tag);
     }
 
     @Override
     public int hashCode() {
-        int result = tag != null ? tag.hashCode() : 0;
-        result = 31 * result + (source != null ? source.hashCode() : 0);
-        return result;
+        return tag.hashCode();
     }
 }
