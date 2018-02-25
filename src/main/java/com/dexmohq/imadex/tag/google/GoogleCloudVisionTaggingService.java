@@ -48,8 +48,7 @@ public class GoogleCloudVisionTaggingService implements TaggingService {
     }
 
     private AnnotateImageRequest createRequest(Resource image) throws IOException {
-        final byte[] bytes = Files.readAllBytes(image.getFile().toPath());
-        final ByteString byteString = ByteString.copyFrom(bytes);
+        final ByteString byteString = ByteString.readFrom(image.getInputStream());
         final Image img = Image.newBuilder().setContent(byteString).build();
         final Feature feature = Feature.newBuilder().setType(Feature.Type.LABEL_DETECTION).build();
         return AnnotateImageRequest.newBuilder()

@@ -1,13 +1,12 @@
 package com.dexmohq.imadex.tag.azure;
 
-import cognitivej.vision.computervision.ComputerVisionScenario;
-import cognitivej.vision.computervision.ImageDescription;
-import cognitivej.vision.computervision.OCRResult;
-import cognitivej.vision.face.scenario.*;
+import cognitivej.vision.face.scenario.ImageHolder;
 import com.dexmohq.imadex.storage.StorageService;
 import com.dexmohq.imadex.tag.Tag;
 import com.dexmohq.imadex.tag.TaggingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.io.ByteStreams;
+import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
@@ -17,7 +16,6 @@ import org.apache.http.impl.client.HttpClients;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -25,7 +23,6 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 import java.util.stream.Stream;
 
 @Service
@@ -79,7 +76,7 @@ public class AzureCognitiveVisionTaggingService implements TaggingService {
         final HttpPost request = new HttpPost(baseUri);
         request.setHeader("Content-Type", "application/octet-stream");
         request.setHeader("Ocp-Apim-Subscription-Key", azureCognitiveProperties.getVisionSubscriptionKey());
-        final byte[] imageBytes = Files.readAllBytes(image.getFile().toPath());
+        final byte[] imageBytes = IOUtils.toByteArray(image.getInputStream());
         final ByteArrayEntity entity = new ByteArrayEntity(imageBytes, ContentType.APPLICATION_OCTET_STREAM);
         request.setEntity(entity);
         return request;

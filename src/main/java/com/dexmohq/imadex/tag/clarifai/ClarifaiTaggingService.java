@@ -3,12 +3,14 @@ package com.dexmohq.imadex.tag.clarifai;
 import clarifai2.api.ClarifaiBuilder;
 import clarifai2.api.ClarifaiClient;
 import clarifai2.dto.input.ClarifaiInput;
+import clarifai2.dto.input.ClarifaiInputValue;
 import clarifai2.dto.model.output.ClarifaiOutput;
 import clarifai2.dto.prediction.Concept;
 import com.dexmohq.imadex.tag.Tag;
 import com.dexmohq.imadex.tag.TaggingProcessingException;
 import com.dexmohq.imadex.tag.TaggingService;
 import com.dexmohq.imadex.util.Futures;
+import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -52,7 +54,7 @@ public class ClarifaiTaggingService implements TaggingService {
 
     @Override
     public CompletableFuture<Stream<? extends Tag>> extractTagsAsync(Resource image) throws IOException {
-        final ClarifaiInput input = ClarifaiInput.forImage(image.getFile());
+        final ClarifaiInput input = ClarifaiInput.forImage(IOUtils.toByteArray(image.getInputStream()));
         final Future<ClarifaiClient> clientFuture = new ClarifaiBuilder(clarifaiProperties.getApiKey())
                 .build();
         final CompletableFuture<ClarifaiClient> future = Futures.completable(clientFuture);
@@ -61,8 +63,9 @@ public class ClarifaiTaggingService implements TaggingService {
                     .predict()
                     .withInputs(input)
                     .executeSync().get();
-            if (outputs.size() == 1) {
-                future.obtrudeException(new TaggingProcessingException());
+            if (outputs.size() != 1) {
+                future.obtrudeException(new TaggingProcessingException());//todo may need fixing
+                return null;
             }
             return outputs.get(0).data().stream().map(ClarifaiTag::new);
         });
