@@ -22,19 +22,19 @@ public class TaggedImage {
 
     //todo more metadata
 
-    private Set<String> alreadyTaggedBy = Collections.emptySet();
+    private Set<String> alreadyTaggedBy;
 
     private Set<TagDocument> tags;
 
-    public TaggedImage(String userId, String filename) {//todo check if object id is always the same length, otherwise user id and array of tags as property
+    public TaggedImage(String userId, String filename) {
         id = userId + filename;
     }
 
     public String getUserId() {
-        return id.substring(0, 36);
+        return id.substring(0, 24);
     }
 
     public String getFilename() {
-        return id.substring(36);
+        return id.substring(24);
     }
 }

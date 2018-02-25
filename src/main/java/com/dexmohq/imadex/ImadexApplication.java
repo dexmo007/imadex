@@ -4,6 +4,7 @@ import com.dexmohq.imadex.auth.MongoClientDetails;
 import com.dexmohq.imadex.auth.MongoClientDetailsRepository;
 import com.dexmohq.imadex.auth.UserService;
 import com.dexmohq.imadex.auth.UserRepository;
+import com.dexmohq.imadex.data.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -11,10 +12,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
 
 @SpringBootApplication
 public class ImadexApplication {
@@ -24,7 +22,9 @@ public class ImadexApplication {
     @Bean
     CommandLineRunner started(MongoClientDetailsRepository mongoClientDetailsRepository,
                               UserRepository userRepository,
-                              UserService userService) {
+                              UserService userService,
+                              TagRepository tagRepository,
+                              PersonalTagStorageRepository personalTagStorageRepository) {
         return (args) -> {
             mongoClientDetailsRepository.deleteAll();
             userRepository.deleteAll();
@@ -45,6 +45,35 @@ public class ImadexApplication {
             userService.registerUser("jb007", "james.bond@mi6.co.uk", "theresa");
 
             mongoClientDetailsRepository.save(clientDetails);
+
+            final List<TaggedImage> all = tagRepository.findAll();
+            for (TaggedImage taggedImage : all) {
+                final String userId = taggedImage.getUserId();
+                final String filename = taggedImage.getFilename();
+                final Set<TagDocument> tags = taggedImage.getTags();
+                final Set<String> alreadyTaggedBy = taggedImage.getAlreadyTaggedBy();
+                final TaggedImage2 image = new TaggedImage2();
+                image.setFilename(filename);
+                image.setAlreadyTaggedBy(alreadyTaggedBy);
+                image.setTags(tags);
+                PersonalTagStorage storage = personalTagStorageRepository.findOne(userId);
+                if (storage == null) {
+                    storage = new PersonalTagStorage();
+                    storage.setUserId(userId);
+                    storage.setImages(Collections.singletonList(image));
+                } else {
+                    final ArrayList<TaggedImage2> newImages = new ArrayList<>(storage.getImages());
+                    for (TaggedImage2 existing : newImages) {
+                        if (existing.getFilename().equals(filename)) {
+                            throw new IllegalStateException("Duplicate file: " + filename);
+                        }
+                    }
+                    newImages.add(image);
+                    storage.setImages(newImages);
+                }
+                personalTagStorageRepository.save(storage);
+                tagRepository.delete(taggedImage.getId());
+            }
         };
     }
 

@@ -95,11 +95,13 @@ public class TagController {
     public Future<ResponseEntity<?>> compute(@RequestParam("source") String source,
                                              @RequestParam("image") String image,
                                              OAuth2Authentication authentication)
-            throws TaggingSourceNotFoundException, IOException {//todo check if computed already
+            throws TaggingSourceNotFoundException, IOException {
         final String userId = getUserId(authentication);
         final TaggedImage existing = tagRepository.findOne(userId + image);
-        if (existing != null && existing.getAlreadyTaggedBy() != null && existing.getAlreadyTaggedBy().contains(source)) {
-            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.CONFLICT).body("Already computed"));
+        if (existing != null && existing.getAlreadyTaggedBy() != null
+                && existing.getAlreadyTaggedBy().contains(source.toLowerCase())) {
+            return CompletableFuture.completedFuture(
+                    ResponseEntity.status(HttpStatus.CONFLICT).body("Already computed"));
         }
         final Resource resource = storageService.load(userId, image);
         final long fileSize = resource.contentLength();
