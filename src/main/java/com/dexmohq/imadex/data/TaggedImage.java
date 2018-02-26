@@ -1,40 +1,22 @@
 package com.dexmohq.imadex.data;
 
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.Builder;
+import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
-@Document(collection = "tagged_image")
-@Getter
-@Setter
-@NoArgsConstructor
+@Document(collection = "tags")
+@Data
+@Builder
 public class TaggedImage {
 
     @Id
     private String id;
-
-    //todo more metadata
-
+    private String userId;
+    private String filename;
     private Set<String> alreadyTaggedBy;
-
     private Set<TagDocument> tags;
 
-    public TaggedImage(String userId, String filename) {
-        id = userId + filename;
-    }
-
-    public String getUserId() {
-        return id.substring(0, 24);
-    }
-
-    public String getFilename() {
-        return id.substring(24);
-    }
 }

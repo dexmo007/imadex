@@ -1,9 +1,6 @@
 package com.dexmohq.imadex.controllers;
 
-import com.dexmohq.imadex.data.TagDocument;
-import com.dexmohq.imadex.data.TagQuality;
-import com.dexmohq.imadex.data.TagRepository;
-import com.dexmohq.imadex.data.TaggedImage;
+import com.dexmohq.imadex.data.*;
 import com.dexmohq.imadex.storage.StorageItem;
 import com.dexmohq.imadex.storage.StorageService;
 import com.dexmohq.imadex.tag.TaggingServiceProvider;
@@ -23,35 +20,37 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import static com.dexmohq.imadex.auth.IdTokenEnhancer.getUserId;
+import static java.util.stream.Collectors.toList;
 
 @RestController
 @RequestMapping("/tag")
 @PreAuthorize("hasAuthority('USER')")
 public class TagController {
 
-    public static final String CUSTOM_TAG_SOURCE = "custom";
-    private final TagRepository tagRepository;
+    private static final String CUSTOM_TAG_SOURCE = "custom";
+
     private final StorageService storageService;
     private final TaggingServiceProvider taggingServiceProvider;
-
+    private final TaggedImageRepository taggedImageRepository;
 
     @Autowired
-    public TagController(TagRepository tagRepository, StorageService storageService, TaggingServiceProvider taggingServiceProvider) {
-        this.tagRepository = tagRepository;
+    public TagController(StorageService storageService, TaggingServiceProvider taggingServiceProvider, TaggedImageRepository taggedImageRepository) {
+//        this.tagRepository = tagRepository;
         this.storageService = storageService;
         this.taggingServiceProvider = taggingServiceProvider;
+        this.taggedImageRepository = taggedImageRepository;
     }
 
     @GetMapping("/list")
     public List<TaggedStorageItem> list(@RequestParam("page") int page,
                                         @RequestParam(value = "pageSize", defaultValue = "20") int pageSize,
-                                        OAuth2Authentication authentication) throws IOException {//todo extract user id
+                                        OAuth2Authentication authentication) throws IOException {
         final String userId = getUserId(authentication);
         return storageService.listFiles(userId, page, pageSize).map(item -> {
-            final TaggedImage taggedImage = tagRepository.findOne(userId + item.getFilename());
+            final TaggedImage taggedImage = taggedImageRepository.findByUserIdAndFilename(userId, item.getFilename());
             final Set<TagDocument> tags = taggedImage == null ? null : taggedImage.getTags();
             return new TaggedStorageItem(item, tags);
-        }).collect(Collectors.toList());
+        }).collect(toList());
     }
 
     @PostMapping("/add")
@@ -62,9 +61,9 @@ public class TagController {
         if (!storageService.exists(userId, image)) {
             return ResponseEntity.notFound().build();
         }
-        TaggedImage taggedImage = tagRepository.findOne(userId + image);
+        TaggedImage taggedImage = taggedImageRepository.findByUserIdAndFilename(userId, image);
         if (taggedImage == null) {
-            taggedImage = new TaggedImage(userId, image);
+            taggedImage = TaggedImage.builder().build();
             taggedImage.setTags(Collections.singleton(TagDocument.create(tag, CUSTOM_TAG_SOURCE)));
         } else {
             final Set<TagDocument> tags = taggedImage.getTags();
@@ -87,7 +86,7 @@ public class TagController {
                 }
             }
         }
-        tagRepository.save(taggedImage);
+        taggedImageRepository.save(taggedImage);
         return ResponseEntity.ok("Successful");
     }
 
@@ -97,7 +96,7 @@ public class TagController {
                                              OAuth2Authentication authentication)
             throws TaggingSourceNotFoundException, IOException {
         final String userId = getUserId(authentication);
-        final TaggedImage existing = tagRepository.findOne(userId + image);
+        final TaggedImage existing = taggedImageRepository.findByUserIdAndFilename(userId, image);
         if (existing != null && existing.getAlreadyTaggedBy() != null
                 && existing.getAlreadyTaggedBy().contains(source.toLowerCase())) {
             return CompletableFuture.completedFuture(
@@ -113,7 +112,9 @@ public class TagController {
                 .whenComplete((taggedStorageItem, throwable) -> {
                     TaggedImage taggedImage = existing;
                     if (taggedImage == null) {
-                        taggedImage = new TaggedImage(userId, image);
+                        taggedImage = TaggedImage.builder().build();
+                        taggedImage.setUserId(userId);
+                        taggedImage.setFilename(image);
                     }
                     Set<TagDocument> tags = taggedImage.getTags();
                     if (tags == null) {
@@ -136,7 +137,7 @@ public class TagController {
                     }
                     tags.addAll(taggedStorageItem.getTags());
                     taggedImage.getAlreadyTaggedBy().add(source);
-                    tagRepository.save(taggedImage);
+                    taggedImageRepository.save(taggedImage);
                 })
                 .thenApply(ResponseEntity::ok);
     }
