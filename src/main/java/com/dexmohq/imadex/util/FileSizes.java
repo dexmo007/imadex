@@ -1,9 +1,11 @@
 package com.dexmohq.imadex.util;
 
+import lombok.experimental.UtilityClass;
+
 import java.text.DecimalFormat;
 
+@UtilityClass
 public class FileSizes {
-
     private static final String[] UNITS = {"B", "KB", "MB", "GB", "TB"};
 
     public static String readableFileSize(long size) {

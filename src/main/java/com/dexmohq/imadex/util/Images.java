@@ -1,5 +1,7 @@
 package com.dexmohq.imadex.util;
 
+import lombok.experimental.UtilityClass;
+
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
@@ -8,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
 
+@UtilityClass
 public class Images {
 
     public static void validate(InputStream in) throws IOException {
@@ -23,10 +26,5 @@ public class Images {
         } while (readers.hasNext());
         imageInputStream.close();
     }
-
-    public static void main(String[] args) throws IOException {
-        validate(new FileInputStream("D:\\data\\imadex-test\\sample.png"));
-    }
-
 
 }
