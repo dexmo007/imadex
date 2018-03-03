@@ -41,7 +41,7 @@ public class StorageController {
                                        @RequestParam(value = "pageSize", defaultValue = "20") int pageSize,
                                        OAuth2Authentication authentication) throws IOException {
         final String userId = getUserId(authentication);
-        return storageService.listFiles(userId, page, pageSize).collect(Collectors.toList());
+        return storageService.listImages(userId, page, pageSize).collect(Collectors.toList());
     }
 
     @PostMapping("/upload")
@@ -51,7 +51,7 @@ public class StorageController {
         final String userId = getUserId(authentication);
         try {
             imageFormatValidator.validateFormat(file);
-            storageService.store(userId, file, override);
+            storageService.storeImage(userId, file, override);
             return ResponseEntity.ok("Successfully uploaded");
         } catch (FileAlreadyExistsException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body("File already exists. Override?");
@@ -66,7 +66,7 @@ public class StorageController {
                                         OAuth2Authentication authentication) {
         final String userId = getUserId(authentication);
         try {
-            final Resource file = storageService.load(userId, id);
+            final Resource file = storageService.loadImage(userId, id);
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION,
                             "attachment; filename=\"" + file.getFilename() + "\"")
@@ -81,7 +81,7 @@ public class StorageController {
                                          OAuth2Authentication authentication) {
         final String userId = getUserId(authentication);
         try {
-            storageService.delete(userId, id);
+            storageService.deleteImage(userId, id);
             return ResponseEntity.ok("Successfully deleted");
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED)

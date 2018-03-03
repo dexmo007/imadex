@@ -46,7 +46,7 @@ public class TagController {
                                         @RequestParam(value = "pageSize", defaultValue = "20") int pageSize,
                                         OAuth2Authentication authentication) throws IOException {
         final String userId = getUserId(authentication);
-        return storageService.listFiles(userId, page, pageSize).map(item -> {
+        return storageService.listImages(userId, page, pageSize).map(item -> {
             final TaggedImage taggedImage = taggedImageRepository.findByUserIdAndFilename(userId, item.getFilename());
             final Set<TagDocument> tags = taggedImage == null ? null : taggedImage.getTags();
             return new TaggedStorageItem(item, tags);
@@ -58,7 +58,7 @@ public class TagController {
                                     @RequestParam("tag") String tag,
                                     OAuth2Authentication authentication) {
         final String userId = getUserId(authentication);
-        if (!storageService.exists(userId, image)) {
+        if (!storageService.existsImage(userId, image)) {
             return ResponseEntity.notFound().build();
         }
         TaggedImage taggedImage = taggedImageRepository.findByUserIdAndFilename(userId, image);
@@ -102,7 +102,7 @@ public class TagController {
             return CompletableFuture.completedFuture(
                     ResponseEntity.status(HttpStatus.CONFLICT).body("Already computed"));
         }
-        final Resource resource = storageService.load(userId, image);
+        final Resource resource = storageService.loadImage(userId, image);
         final long fileSize = resource.contentLength();
         return taggingServiceProvider.getTaggingService(source)
                 .extractTagsAsync(resource)

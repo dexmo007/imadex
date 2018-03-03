@@ -1,16 +1,20 @@
 package com.dexmohq.imadex.storage;
 
+import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -24,7 +28,7 @@ public class StorageService {
         this.storageProperties = storageProperties;
     }
 
-    public Stream<StorageItem> listFiles(String userId, int page, int pageSize) throws IOException {
+    public Stream<StorageItem> listImages(String userId, int page, int pageSize) throws IOException {
         if (page < 1) {
             throw new InvalidPaginationException("Page must be >1");
         }
@@ -45,7 +49,7 @@ public class StorageService {
         return storageProperties.getPath().resolve(userId).resolve(filename);
     }
 
-    public void store(String userId, MultipartFile file, boolean override) throws IOException {
+    public void storeImage(String userId, MultipartFile file, boolean override) throws IOException {
         final Path destination = getPathFor(userId, file.getOriginalFilename());
         if (!override && Files.exists(destination)) {
             throw new FileAlreadyExistsException(destination.toString());
@@ -54,12 +58,12 @@ public class StorageService {
         Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
     }
 
-    public boolean exists(String userId, String image) {
+    public boolean existsImage(String userId, String image) {
         final Path imagePath = getPathFor(userId, image);
         return Files.exists(imagePath);
     }
 
-    public Resource load(String userId, String id) throws IOException {
+    public Resource loadImage(String userId, String id) throws IOException {
         final Path file = getPathFor(userId, id);
         final UrlResource resource = new UrlResource(file.toUri());
         if (resource.exists() || resource.isReadable()) {
@@ -69,7 +73,15 @@ public class StorageService {
         }
     }
 
-    public void delete(String userId, String id) throws IOException {//todo delete tags
+    public void deleteImage(String userId, String id) throws IOException {//todo delete tags
         Files.deleteIfExists(getPathFor(userId, id));
     }
+
+    @SneakyThrows
+    public void executeWithTempFile(Consumer<File> action) {
+        final Path tempFile = Files.createFile(storageProperties.getPath().resolve(UUID.randomUUID().toString()));
+        action.accept(tempFile.toFile());
+        Files.deleteIfExists(tempFile);
+    }
+
 }
