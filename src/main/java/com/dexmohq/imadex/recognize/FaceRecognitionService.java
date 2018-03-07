@@ -83,7 +83,7 @@ public class FaceRecognitionService {
     }
 
     private List<Mat> extractFaces(String imagePath) {
-
+        //imread(imagePath, CV_LOAD_IMAGE_GRAYSCALE);
         final opencv_core.IplImage gray = cvLoadImage(imagePath, CV_LOAD_IMAGE_GRAYSCALE);
 //            final IplImage small = IplImage.create(gray.width() / SCALE, gray.height() / SCALE, IPL_DEPTH_8U, 1);
 //            cvResize(gray, small, CV_INTER_LINEAR);

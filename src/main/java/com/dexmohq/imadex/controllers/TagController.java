@@ -1,6 +1,10 @@
 package com.dexmohq.imadex.controllers;
 
-import com.dexmohq.imadex.data.*;
+import com.dexmohq.imadex.auth.stereotype.UserId;
+import com.dexmohq.imadex.data.TagDocument;
+import com.dexmohq.imadex.data.TagQuality;
+import com.dexmohq.imadex.data.TaggedImage;
+import com.dexmohq.imadex.data.TaggedImageRepository;
 import com.dexmohq.imadex.storage.StorageItem;
 import com.dexmohq.imadex.storage.StorageService;
 import com.dexmohq.imadex.tag.TaggingServiceProvider;
@@ -10,7 +14,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -19,7 +22,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
-import static com.dexmohq.imadex.auth.IdTokenEnhancer.getUserId;
 import static java.util.stream.Collectors.toList;
 
 @RestController
@@ -44,8 +46,7 @@ public class TagController {
     @GetMapping("/list")
     public List<TaggedStorageItem> list(@RequestParam("page") int page,
                                         @RequestParam(value = "pageSize", defaultValue = "20") int pageSize,
-                                        OAuth2Authentication authentication) throws IOException {
-        final String userId = getUserId(authentication);
+                                        @UserId String userId) throws IOException {
         return storageService.listImages(userId, page, pageSize).map(item -> {
             final TaggedImage taggedImage = taggedImageRepository.findByUserIdAndFilename(userId, item.getFilename());
             final Set<TagDocument> tags = taggedImage == null ? null : taggedImage.getTags();
@@ -56,8 +57,7 @@ public class TagController {
     @PostMapping("/add")
     public ResponseEntity<?> addTag(@RequestParam("image") String image,
                                     @RequestParam("tag") String tag,
-                                    OAuth2Authentication authentication) {
-        final String userId = getUserId(authentication);
+                                    @UserId String userId) {
         if (!storageService.existsImage(userId, image)) {
             return ResponseEntity.notFound().build();
         }
@@ -93,9 +93,8 @@ public class TagController {
     @PostMapping("/compute")
     public Future<ResponseEntity<?>> compute(@RequestParam("source") String source,
                                              @RequestParam("image") String image,
-                                             OAuth2Authentication authentication)
+                                             @UserId String userId)
             throws TaggingSourceNotFoundException, IOException {
-        final String userId = getUserId(authentication);
         final TaggedImage existing = taggedImageRepository.findByUserIdAndFilename(userId, image);
         if (existing != null && existing.getAlreadyTaggedBy() != null
                 && existing.getAlreadyTaggedBy().contains(source.toLowerCase())) {

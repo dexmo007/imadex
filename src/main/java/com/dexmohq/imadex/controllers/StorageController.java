@@ -1,5 +1,6 @@
 package com.dexmohq.imadex.controllers;
 
+import com.dexmohq.imadex.auth.stereotype.UserId;
 import com.dexmohq.imadex.image.FileCorruptedException;
 import com.dexmohq.imadex.image.ImageFormatValidator;
 import com.dexmohq.imadex.image.UnsupportedFormatException;
@@ -20,8 +21,6 @@ import java.nio.file.FileAlreadyExistsException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.dexmohq.imadex.auth.IdTokenEnhancer.getUserId;
-
 @RestController
 @RequestMapping("/storage")
 @PreAuthorize("hasAuthority('USER')")
@@ -39,16 +38,14 @@ public class StorageController {
     @GetMapping("/list")
     public List<StorageItem> listFiles(@RequestParam("page") int page,
                                        @RequestParam(value = "pageSize", defaultValue = "20") int pageSize,
-                                       OAuth2Authentication authentication) throws IOException {
-        final String userId = getUserId(authentication);
+                                       @UserId String userId) throws IOException {
         return storageService.listImages(userId, page, pageSize).collect(Collectors.toList());
     }
 
     @PostMapping("/upload")
     public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file,
                                              @RequestParam(name = "override", required = false) boolean override,
-                                             OAuth2Authentication authentication) throws FileCorruptedException, UnsupportedFormatException {
-        final String userId = getUserId(authentication);
+                                             @UserId String userId) throws FileCorruptedException, UnsupportedFormatException {
         try {
             imageFormatValidator.validateFormat(file);
             storageService.storeImage(userId, file, override);
@@ -63,8 +60,7 @@ public class StorageController {
 
     @GetMapping
     public ResponseEntity<Resource> get(@RequestParam("id") String id,
-                                        OAuth2Authentication authentication) {
-        final String userId = getUserId(authentication);
+                                        @UserId String userId) {
         try {
             final Resource file = storageService.loadImage(userId, id);
             return ResponseEntity.ok()
@@ -78,8 +74,7 @@ public class StorageController {
 
     @DeleteMapping
     public ResponseEntity<String> delete(@RequestParam("id") String id,
-                                         OAuth2Authentication authentication) {
-        final String userId = getUserId(authentication);
+                                         @UserId String userId) {
         try {
             storageService.deleteImage(userId, id);
             return ResponseEntity.ok("Successfully deleted");

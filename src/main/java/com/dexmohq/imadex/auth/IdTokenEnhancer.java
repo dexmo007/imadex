@@ -11,7 +11,7 @@ import java.util.Map;
 
 public class IdTokenEnhancer implements TokenEnhancer {
 
-    private static final String USER_ID_KEY = "user_id";
+    static final String USER_ID_KEY = "user_id";
 
     @Override
     public OAuth2AccessToken enhance(OAuth2AccessToken accessToken, OAuth2Authentication authentication) {
@@ -23,10 +23,10 @@ public class IdTokenEnhancer implements TokenEnhancer {
         return accessToken;
     }
 
-    @SuppressWarnings("unchecked")
-    public static String getUserId(OAuth2Authentication auth) {
-        return  (String) ((Map<String, ?>) ((OAuth2AuthenticationDetails) auth.getDetails())
-                .getDecodedDetails()).get(IdTokenEnhancer.USER_ID_KEY);
-    }
+//    @SuppressWarnings("unchecked")
+//    public static String getUserId(OAuth2Authentication auth) {
+//        return  (String) ((Map<String, ?>) ((OAuth2AuthenticationDetails) auth.getDetails())
+//                .getDecodedDetails()).get(IdTokenEnhancer.USER_ID_KEY);
+//    }
 
 }
